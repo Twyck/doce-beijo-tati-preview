@@ -17,26 +17,15 @@ WIDTHS = [480, 800, 1200, 1600, 2400]
 
 
 def grade(im):
-    """Correção única para todas as fotos (celular, luz fria, paredes rosa-choque):
-    acalma o magenta sem tirar o rosa da marca, aquece de leve e suaviza o contraste,
-    para que todas pareçam da mesma sessão."""
-    hsv = im.convert("HSV")
-    h, s, v = hsv.split()
-    hd, sd = h.load(), s.load()
-    W, H = im.size
-    for y in range(H):
-        for x in range(W):
-            hue = hd[x, y]  # 0-255 → 0-360°
-            if hue >= 205 or hue <= 6:  # rosa/magenta (≈290°–360°)
-                sd[x, y] = int(sd[x, y] * 0.58)
-    out = Image.merge("HSV", (h, s, v)).convert("RGB")
-    r, g, b = out.split()
-    r = r.point(lambda c: min(255, c * 1.02 + 2))
-    b = b.point(lambda c: c * 0.95)
+    """Correção única para todas as fotos (celular, luz fria): mantém o rosa da loja vivo,
+    aquece de leve, tira o cinza da luz fluorescente e dá um contraste "de vitrine"."""
+    r, g, b = im.split()[:3]
+    r = r.point(lambda c: min(255, c * 1.03 + 3))
+    b = b.point(lambda c: c * 0.97)
     out = Image.merge("RGB", (r, g, b))
-    out = ImageEnhance.Color(out).enhance(0.88)
-    out = ImageEnhance.Contrast(out).enhance(1.04)
-    return out.point(lambda c: 10 + c * (246 - 10) / 255)
+    out = ImageEnhance.Color(out).enhance(1.08)
+    out = ImageEnhance.Contrast(out).enhance(1.07)
+    return out.point(lambda c: 6 + c * (250 - 6) / 255)
 
 
 manifest = {}
@@ -59,18 +48,24 @@ for f in sorted([p for p in SRC.iterdir() if p.suffix in (".jpg", ".png", ".webp
 
 (ROOT / "src" / "images.json").write_text(json.dumps(manifest, indent=2))
 
-# Open Graph 1200x630: chantilly + foto do bolo nuvem + nome
-CREME, CACAU, ROSA = (247, 241, 234), (42, 29, 23), (166, 92, 99)
-og = Image.new("RGB", (1200, 630), CREME)
-photo = ImageOps.fit(grade(ImageOps.exif_transpose(Image.open(SRC / "bolo-nuvem.jpg")).convert("RGB").reduce(3)), (520, 630), centering=(0.5, 0.62))
-og.paste(photo, (680, 0))
+# Open Graph 1200x630: rosa da bandeira + foto do bolo nuvem + nome
+PINK, CHOC, CREME = (240, 56, 138), (58, 26, 31), (255, 246, 238)
+og = Image.new("RGB", (1200, 630), PINK)
+photo = ImageOps.fit(grade(ImageOps.exif_transpose(Image.open(SRC / "bolo-nuvem.jpg")).convert("RGB").reduce(3)), (430, 520), centering=(0.5, 0.62))
+frame = Image.new("RGB", (450, 540), CREME); frame.paste(photo, (10, 10))
+frame = frame.rotate(-4, expand=True, fillcolor=PINK, resample=Image.BICUBIC)
+og.paste(frame, (720, 30))
 d = ImageDraw.Draw(og)
-serif = "/System/Library/Fonts/Supplemental/Georgia Italic.ttf"
-serif_r = "/System/Library/Fonts/Supplemental/Georgia.ttf"
-sans = "/System/Library/Fonts/Supplemental/Arial.ttf"
-d.text((70, 120), "CONFEITARIA ARTESANAL · VILA ZAT, PIRITUBA", font=ImageFont.truetype(sans, 20), fill=ROSA)
-d.text((66, 170), "Doce Beijo Tati", font=ImageFont.truetype(serif, 84), fill=CACAU)
-d.text((70, 300), "O lado doce da vida.", font=ImageFont.truetype(serif_r, 44), fill=CACAU)
-d.text((70, 480), "Bolos, doces e salgados · delivery seg. a sáb.", font=ImageFont.truetype(sans, 24), fill=CACAU)
-og.save(ROOT / "public" / "og-doce-beijo-tati.jpg", "JPEG", quality=86, optimize=True)
+disp = str(ROOT / "node_modules/@fontsource/shrikhand/files/shrikhand-latin-400-normal.woff2")
+try:
+    big = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Black.ttf", 92)
+except Exception:
+    big = ImageFont.load_default()
+sans = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+d.text((70, 110), "CONFEITARIA ARTESANAL · PIRITUBA", font=ImageFont.truetype(sans, 22), fill=CREME)
+d.text((64, 160), "Doce Beijo", font=big, fill=CREME)
+d.text((64, 270), "Tati", font=big, fill=CHOC)
+d.text((70, 430), "O lado doce da vida.", font=ImageFont.truetype(sans, 40), fill=CREME)
+d.text((70, 500), "Bolos, doces e salgados · delivery seg. a sáb.", font=ImageFont.truetype(sans, 24), fill=CHOC)
+og.save(ROOT / "public" / "og-doce-beijo-tati.jpg", "JPEG", quality=88, optimize=True)
 print("og ok")

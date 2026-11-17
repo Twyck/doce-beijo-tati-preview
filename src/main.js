@@ -1,5 +1,5 @@
-import '@fontsource-variable/fraunces/full.css'
-import '@fontsource-variable/fraunces/full-italic.css'
+import '@fontsource/shrikhand/400.css'
+import '@fontsource-variable/caveat/index.css'
 import '@fontsource-variable/figtree/index.css'
 import 'lenis/dist/lenis.css'
 import './styles.css'
@@ -72,8 +72,15 @@ function updateStatus() {
   setRow('site', site)
   $$('[data-clock]').forEach((el) => { el.textContent = `${hh}:${mm}` })
   $$('[data-day]').forEach((el) => { if (el.tagName !== 'TR') el.textContent = DAY_NAMES[day] })
-  const short = loja.live ? `Loja aberta até ${fmt(LOJA[day][1])}` : `Loja fechada · ${loja.text.replace('Abre', 'abre')}`
+  const short = loja.live ? `Loja aberta agora, até ${fmt(LOJA[day][1])}` : `Loja fechada, ${loja.text.replace('Abre', 'abre')}`
   $$('[data-status-short]').forEach((el) => { el.textContent = short })
+  html.classList.toggle('is-open-now', loja.live)
+  const door = $('[data-door]')
+  if (door) {
+    door.classList.toggle('is-closed', !loja.live)
+    const next = $('[data-door-next]')
+    if (next) next.textContent = loja.text.replace('Abre', 'abre').replace(' às ', ' às ')
+  }
   $$('[data-status]').forEach((el) => { el.textContent = loja.live ? `Aberta agora · até ${fmt(LOJA[day][1])}` : `Fechada agora · ${loja.text.replace('Abre', 'abre')}` })
   $$('.hours tr').forEach((tr) => {
     const [a, b] = tr.dataset.day.split('-').map(Number)
@@ -154,28 +161,6 @@ document.addEventListener('click', (e) => {
 })
 
 /* --------------------------------------------------------------------------
-   Manifesto: palavras acendem conforme a leitura
-   -------------------------------------------------------------------------- */
-function splitWords(el) {
-  const walk = (node) => {
-    ;[...node.childNodes].forEach((n) => {
-      if (n.nodeType === 3) {
-        const frag = document.createDocumentFragment()
-        n.textContent.split(/(\s+)/).forEach((part) => {
-          if (!part) return
-          if (/^\s+$/.test(part)) frag.append(part)
-          else { const s = document.createElement('span'); s.className = 'word'; s.textContent = part; frag.append(s) }
-        })
-        n.replaceWith(frag)
-      } else if (n.nodeType === 1) walk(n)
-    })
-  }
-  el.setAttribute('aria-label', el.textContent.replace(/\s+/g, ' ').trim())
-  walk(el)
-  $$('.word', el).forEach((w) => w.setAttribute('aria-hidden', 'true'))
-}
-
-/* --------------------------------------------------------------------------
    Fotos de seções fixas: carregam antes de chegar (o lazy nativo atrasa
    quando a seção é atravessada rápido)
    -------------------------------------------------------------------------- */
@@ -189,124 +174,111 @@ if ('IntersectionObserver' in window) {
 }
 
 /* --------------------------------------------------------------------------
-   Abertura: a vitrine assenta, o título sobe
+   Abertura: o "DOCE" cai letra por letra e quica; as fotos são coladas
    -------------------------------------------------------------------------- */
 async function intro() {
   if (reduceMotion) { html.classList.remove('js-intro'); return }
   await Promise.race([document.fonts?.ready, wait(1200)])
-  const tl = gsap.timeline({ defaults: { ease: 'expo.out' }, onStart: () => html.classList.remove('js-intro') })
-  tl.fromTo('[data-hero-bg]', { scale: 1.12 }, { scale: 1, duration: 2.8, ease: 'power3.out' }, 0)
-    .fromTo('[data-hero-bg] img', { opacity: 0.35 }, { opacity: 1, duration: 1.8, ease: 'power2.out' }, 0)
-    .fromTo('[data-hero-line]', { opacity: 0, yPercent: 70 }, { opacity: 1, yPercent: 0, duration: 1.6, stagger: 0.14 }, 0.25)
-    .fromTo('[data-hero-fade]', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1.2, stagger: 0.08 }, 0.8)
+  const tl = gsap.timeline({ onStart: () => html.classList.remove('js-intro') })
+  tl.fromTo('[data-hero-fade]', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out', stagger: 0.08 }, 0.05)
+    .fromTo('[data-hero-line]', { opacity: 0, yPercent: 60 }, { opacity: 1, yPercent: 0, duration: 1, ease: 'expo.out', stagger: 0.5 }, 0.15)
+    .fromTo('[data-doce] span', { opacity: 0, yPercent: -120, rotate: () => gsap.utils.random(-25, 25) },
+      { opacity: 1, yPercent: 0, rotate: 0, duration: 1.1, ease: 'bounce.out', stagger: 0.09 }, 0.3)
+    .fromTo('[data-snap]', { opacity: 0, scale: 1.35, y: -40 }, { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: 'back.out(2.2)', stagger: 0.14 }, 0.75)
+}
+
+/* --------------------------------------------------------------------------
+   Letreiro corrido (anda sozinho e acelera com o scroll)
+   -------------------------------------------------------------------------- */
+const marquee = $('[data-marquee]')
+let marqueeTween = null
+if (!reduceMotion && marquee) {
+  marqueeTween = gsap.to(marquee, { xPercent: -50, duration: 28, ease: 'none', repeat: -1 })
+  ScrollTrigger.create({
+    trigger: '.marquee', start: 'top bottom', end: 'bottom top',
+    onUpdate: (self) => gsap.to(marqueeTween, { timeScale: 1 + Math.min(4, Math.abs(self.getVelocity()) / 400), duration: 0.2, overwrite: true, onComplete: () => gsap.to(marqueeTween, { timeScale: 1, duration: 1 }) }),
+  })
 }
 
 /* --------------------------------------------------------------------------
    Coreografia por tamanho de tela
    -------------------------------------------------------------------------- */
-const manifesto = $('[data-manifesto]')
 const mm = gsap.matchMedia()
 
 if (!reduceMotion) {
-  splitWords(manifesto)
-
   mm.add({ desktop: '(min-width: 1024px)', mobile: '(max-width: 1023.98px)' }, (ctx) => {
     const { desktop } = ctx.conditions
 
-    // A frase da porta acende palavra por palavra
-    gsap.to($$('.word', manifesto), {
-      opacity: 1, stagger: 0.1, ease: 'none',
-      scrollTrigger: { trigger: manifesto, start: 'top 82%', end: 'bottom 55%', scrub: true },
+    // A cobertura escorre quando a seção chega
+    $$('[data-drip]').forEach((d) => {
+      gsap.fromTo(d, { scaleY: 0.28 }, { scaleY: 1, ease: 'none', scrollTrigger: { trigger: d.parentElement, start: 'top bottom', end: 'top 35%', scrub: 0.6 } })
     })
 
-    $$('[data-rise]').forEach((el) => {
-      gsap.from(el, { y: 28, opacity: 0, duration: 1.2, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 90%', once: true } })
+    // O toldo desenrola
+    gsap.fromTo('.awning', { scaleY: 0.2 }, { scaleY: 1, ease: 'back.out(2)', duration: 0.9, scrollTrigger: { trigger: '.vitrine', start: 'top 75%', once: true } })
+
+    // Fotos emolduradas giram de leve com o scroll
+    $$('[data-tilt]').forEach((f) => {
+      const r = parseFloat(getComputedStyle(f).rotate) || 0
+      gsap.fromTo(f, { rotate: r - 6, y: 50 }, { rotate: r + 2, y: -20, ease: 'none', scrollTrigger: { trigger: f, start: 'top bottom', end: 'bottom top', scrub: true } })
     })
 
+    // Números contam
     $$('[data-count]').forEach((el) => {
-      const end = Number(el.dataset.count)
-      const dec = Number(el.dataset.decimals || 0)
-      const o = { v: 0 }
-      gsap.to(o, {
-        v: end, duration: 1.8, ease: 'expo.out',
-        scrollTrigger: { trigger: el, start: 'top 85%', once: true },
-        onUpdate: () => { el.textContent = o.v.toFixed(dec).replace('.', ',') },
-      })
+      const end = Number(el.dataset.count); const dec = Number(el.dataset.decimals || 0); const o = { v: 0 }
+      gsap.to(o, { v: end, duration: 1.6, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%', once: true }, onUpdate: () => { el.textContent = o.v.toFixed(dec).replace('.', ',') } })
     })
+
+    // Bolos de festa: são "colocados na mesa", um a um
+    gsap.from('[data-cake]', { y: 120, rotate: (i) => (i % 2 ? 14 : -14), opacity: 0, duration: 0.9, ease: 'back.out(1.6)', stagger: 0.1, scrollTrigger: { trigger: '.cakes', start: 'top 80%', once: true } })
+
+    // Avaliações: bilhetes colados
+    gsap.from('[data-note]', { scale: 0.6, y: 60, opacity: 0, duration: 0.7, ease: 'back.out(2)', stagger: 0.12, scrollTrigger: { trigger: '.notes', start: 'top 80%', once: true } })
+
+    // Plaquinha da porta: balança ao chegar
+    gsap.from('.door', { rotate: -14, transformOrigin: '50% 0', duration: 2.2, ease: 'elastic.out(1, 0.25)', scrollTrigger: { trigger: '.door', start: 'top 80%', once: true } })
 
     if (desktop) {
       html.classList.add('has-pin')
 
-      // Abertura: a foto desce mais devagar que o texto
-      gsap.to('[data-hero-bg] img', { yPercent: 10, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } })
-      gsap.to('.hero__inner', { yPercent: -12, opacity: 0, ease: 'none', scrollTrigger: { trigger: '.hero', start: '35% top', end: 'bottom top', scrub: true } })
+      // Abertura: o DOCE afunda devagar, as fotos sobem mais rápido (profundidade)
+      gsap.to('[data-doce]', { yPercent: 18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } })
+      $$('[data-snap]').forEach((s, i) => gsap.to(s, { y: -120 - i * 70, rotate: `+=${i % 2 ? -8 : 8}`, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } }))
 
-      $$('[data-parallax]').forEach((wrap) => {
-        gsap.fromTo($('img', wrap), { yPercent: -6 }, { yPercent: 6, ease: 'none', scrollTrigger: { trigger: wrap.parentElement, start: 'top bottom', end: 'bottom top', scrub: true } })
-      })
-
-      // Vitrine: seção fixa; cada doce entra como uma cortina que sobe
-      const chapters = $$('[data-chapter]')
-      const chapNum = $('[data-chap-num]')
-      const n = chapters.length
-      gsap.set(chapters.slice(1), { clipPath: 'inset(100% 0% 0% 0%)' })
-      const tl = gsap.timeline({
-        defaults: { ease: 'none' },
-        scrollTrigger: {
-          trigger: '.vitrine', start: 'top top', end: () => `+=${window.innerHeight * (n - 0.4)}`, pin: '.vitrine__stage', scrub: 0.7, refreshPriority: 2,
-          onUpdate(self) {
-            const i = Math.min(n - 1, Math.floor(self.progress * n * 0.999 + 0.08))
-            chapNum.textContent = String(i + 1).padStart(2, '0')
-            gsap.set('[data-chap-bar]', { scaleX: self.progress })
-          },
-        },
-      })
-      chapters.forEach((ch, i) => {
-        if (i === 0) return
-        const img = $('img', ch)
-        const copy = $('.chapter__copy', ch)
-        const at = i - 0.6
-        tl.to(ch, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.6, ease: 'power2.inOut' }, at)
-          .fromTo(img, { scale: 1.18 }, { scale: 1.02, duration: 0.6, ease: 'power2.out' }, at)
-          .fromTo(copy, { y: 60, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.35, ease: 'power2.out' }, i - 0.3)
-          .to($('img', chapters[i - 1]), { filter: 'brightness(0.7)', duration: 0.4, ease: 'power1.in' }, at + 0.2)
-          .to($('.chapter__copy', chapters[i - 1]), { autoAlpha: 0, y: -30, duration: 0.3, ease: 'power2.in' }, at)
-      })
-      tl.to({}, { duration: 0.3 })
-
-      // Bolos de festa: galeria horizontal guiada pelo scroll
-      const track = $('[data-cake-track]')
-      const viewport = $('[data-cake-viewport]')
-      const cakes = $$('.cake', track)
-      const cakeNum = $('[data-cake-num]')
-      const dist = () => Math.max(0, track.scrollWidth - viewport.clientWidth)
-      gsap.to(track, {
+      // A vitrine: prateleira guiada pelo scroll; cada doce dá um "pulinho" ao passar pelo centro
+      const shelf = $('[data-shelf]')
+      const viewport = $('[data-shelf-viewport]')
+      const prods = $$('[data-prod]', shelf)
+      const num = $('[data-shelf-num]')
+      const dist = () => Math.max(0, shelf.scrollWidth - viewport.clientWidth)
+      const move = gsap.to(shelf, {
         x: () => -dist(), ease: 'none',
         scrollTrigger: {
-          trigger: '.festas', start: 'top top', end: () => `+=${dist() + window.innerHeight * 0.3}`,
-          pin: '.festas__stage', scrub: 0.6, invalidateOnRefresh: true, refreshPriority: 1,
-          onUpdate: (self) => { cakeNum.textContent = String(Math.min(cakes.length, 1 + Math.floor(self.progress * cakes.length))).padStart(2, '0') },
+          trigger: '.vitrine', start: 'top top', end: () => `+=${dist() + window.innerHeight * 0.4}`,
+          pin: true, scrub: 0.6, invalidateOnRefresh: true, refreshPriority: 1,
+          onUpdate: (self) => { num.textContent = String(Math.min(prods.length, 1 + Math.floor(self.progress * prods.length * 0.999))).padStart(2, '0') },
         },
       })
+      prods.forEach((p) => {
+        gsap.fromTo($('.label-tag', p), { y: 46, scale: 0.86 }, {
+          y: 0, scale: 1, ease: 'back.out(3)',
+          scrollTrigger: { trigger: p, containerAnimation: move, start: 'left 85%', end: 'left 45%', scrub: true },
+        })
+        const st = $('.sticker', p)
+        if (st) gsap.fromTo(st, { scale: 0, rotate: -30 }, { scale: 1, rotate: 8, ease: 'back.out(3)', scrollTrigger: { trigger: p, containerAnimation: move, start: 'left 70%', end: 'left 50%', scrub: true } })
+      })
 
-      return () => {
-        html.classList.remove('has-pin')
-        gsap.set(chapters, { clearProps: 'clipPath' })
-        gsap.set($$('.chapter img, .chapter__copy'), { clearProps: 'all' })
-      }
+      return () => html.classList.remove('has-pin')
     }
 
-    // Mobile: sem seções fixas. As fotos dos doces se aproximam ao entrar.
-    $$('.chapter__bg img').forEach((img) => {
-      gsap.fromTo(img, { scale: 1.15 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: img.closest('.chapter'), start: 'top bottom', end: 'bottom top', scrub: true } })
-    })
-    const viewport = $('[data-cake-viewport]')
-    const cakes = $$('.cake')
-    const cakeNum = $('[data-cake-num]')
+    // Mobile: a prateleira é um carrossel nativo; o contador acompanha
+    const viewport = $('[data-shelf-viewport]')
+    const prods = $$('[data-prod]')
+    const num = $('[data-shelf-num]')
     const onScroll = () => {
       const max = viewport.scrollWidth - viewport.clientWidth
       const p = max > 0 ? viewport.scrollLeft / max : 0
-      cakeNum.textContent = String(Math.min(cakes.length, 1 + Math.round(p * (cakes.length - 1)))).padStart(2, '0')
+      num.textContent = String(Math.min(prods.length, 1 + Math.round(p * (prods.length - 1)))).padStart(2, '0')
     }
     viewport.addEventListener('scroll', onScroll, { passive: true })
     return () => viewport.removeEventListener('scroll', onScroll)

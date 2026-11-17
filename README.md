@@ -10,22 +10,22 @@ npm run build    # gera dist/
 npm run deploy   # publica no GitHub Pages (Twyck/doce-beijo-tati-preview), só com autorização
 ```
 
-## Direção
-- **A fotografia da casa é a protagonista:** fotos de fundo em tela cheia ou meia tela, sem molduras, sem círculos.
-- **Paleta tirada dos próprios doces:** chantilly `#F7F1EA`, massa `#EEE4D8`, cacau `#2A1D17`. O rosa da fachada entra só como acento empoeirado (`#A9646B`).
-- **Correção de cor única** (`scripts/build-images.py`): acalma o magenta das paredes e do papel de fundo sem tirar o rosa, aquece de leve e suaviza o contraste. Assim as fotos de celular parecem da mesma sessão.
-- **Tipografia:** Fraunces (serifa macia, eixo SOFT e WONK no itálico) e Figtree.
-- **Conceito próprio, "Hoje na Tati":** relógio de São Paulo ao vivo, com o estado real da loja, do delivery e do site de pedidos (abre às 12h40).
+## Direção (v2 — "rosa como a loja")
+A primeira versão (neutra, editorial) foi descartada: a loja é toda rosa, e o site precisa ter a cara dela.
+- **Paleta da própria loja:** rosa-choque da bandeira `#F0388A`, rosa-claro da fachada `#F9C5DA` / `#FDEBF2`, chocolate `#3A1A1F`, creme `#FFF7EF`.
+- **Tipografia:** Shrikhand (letreiro de doceria), Caveat (a letra de mão da bandeira "Busque sempre olhar o lado DOCE da vida") e Figtree.
+- **Assinaturas visuais:** cobertura escorrendo como transição entre seções (`public/drip.svg`, escorre com o scroll); toldo listrado sobre a vitrine; etiquetas com furinho, como as plaquinhas rosa penduradas nos potes da loja; fotos coladas como adesivos; botões com sombra sólida.
+- **Interação própria:** a **plaquinha da porta** vira sozinha entre ABERTO e FECHADO conforme o horário real da loja (fuso de São Paulo), com o relógio ao vivo, o delivery e o site de pedidos.
 
 ## Roteiro das cenas
-1. **Abertura:** a vitrine em tela cheia. O título "O lado *doce* da vida." vem da bandeira da porta.
-2. **A casa:** a frase da bandeira acende palavra por palavra, ao lado da fachada em meia tela.
-3. **Vitrine (fixa no desktop):** bolo nuvem, marmita de cookies, rocamboles e donuts. Cada doce entra como uma cortina subindo sobre o anterior. No mobile, os blocos ficam empilhados e as fotos se aproximam ao entrar.
-4. **Saiu no Instagram:** lançamentos recentes do perfil, com data.
-5. **Bolos de festa:** galeria horizontal guiada pelo scroll no desktop e carrossel nativo no mobile.
-6. **Hoje na Tati:** horário ao vivo.
-7. **Avaliações do Google.**
-8. **Visite:** endereço, WhatsApp, horário da loja (o dia de hoje fica destacado).
+1. **Abertura:** "busque sempre olhar / o lado **DOCE** da vida." As letras de DOCE caem e quicam, e três fotos são "coladas" na tela.
+2. **Letreiro corrido** com os doces da casa; acelera com o scroll.
+3. **A casa:** fachada emoldurada que gira com o scroll, "Nosso império, a realização dos nossos sonhos!", e os números (30 mil, 4,6).
+4. **Vitrine (fixa no desktop):** toldo desenrola, e a prateleira de 8 doces anda com o scroll. Etiquetas e adesivos ("lote limitado", "campeão de vendas") pulam ao chegar. No mobile vira carrossel nativo.
+5. **Bolos de festa:** cinco bolos colocados na mesa, um a um.
+6. **Hoje na Tati:** plaquinha da porta + relógio ao vivo.
+7. **Avaliações** como bilhetes colados.
+8. **Visite** e rodapé com a frase da bandeira.
 
 ## Fontes de cada informação
 
@@ -54,8 +54,8 @@ Preços foram omitidos de propósito.
 - **Horários divergentes:** o Google diz segunda fechada e domingo aberto (10h–14h); o Instagram diz "atendimento de segunda a sábado". O site usa o Google para a loja e a bio para o delivery. Confirmar com ela.
 - **Link do site de pedidos** (citado nos stories): não é público. Quando chegar, vira o botão principal ao lado do WhatsApp.
 - **Fotos em alta:** as capas de reels têm 360 px (o ícone de "play" foi removido com `scripts/remove-play-icon.py`; os originais estão em `research/reel-orig/`). Os bolos de festa vêm de capas de vídeo de 480 px. Uma sessão de fotos curta (vitrine, bolo nuvem, bolos decorados, a Tati trabalhando) eleva tudo.
-- **Logo em vetor:** o wordmark do site é tipográfico (Fraunces itálico), porque a logo só existe em baixa resolução.
+- **Logo em vetor:** o wordmark do site é tipográfico (Shrikhand), porque a logo só existe em baixa resolução.
 - **Foto da Tati:** a seção "A casa" comporta um retrato.
 
 ## QA (17/11/2026)
-`auditoria-layout` e `auditoria-midia` sem problemas nas 14 resoluções. Os pins (vitrine e festas) engatam em 1024, 1280, 1440 e 1920. Sem erros de console, sem overflow horizontal ao redimensionar através de 1024px, e conteúdo todo visível com movimento reduzido. O `checar-menu-ativo` aponta "Vitrine" ao medir "A casa", mas é artefato da ferramenta: ela mede 60% de uma tela abaixo do topo, e a seção tem exatamente uma tela.
+`auditoria-layout` e `auditoria-midia` sem problemas nas 14 resoluções. Sem erros de console, sem overflow horizontal ao redimensionar através de 1024px, e conteúdo todo visível com movimento reduzido. Só a vitrine fica fixa (engata em 1024, 1280, 1440 e 1920).
